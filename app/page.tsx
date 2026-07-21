@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { RANK_LABELS } from "@/lib/labels";
 import { NavAuthActions } from "./nav-auth-actions";
 
 const steps = [
@@ -20,12 +22,6 @@ const steps = [
   },
 ];
 
-const pricingPreview = [
-  { from: "Epic", to: "Legend", price: "Rp150.000", days: "2-3 hari" },
-  { from: "Legend", to: "Mythic", price: "Rp250.000", days: "3-5 hari" },
-  { from: "Mythic", to: "Mythic Honor", price: "Rp350.000", days: "5-7 hari" },
-];
-
 const trustPoints = [
   { label: "Akun Aman", desc: "Kredensial dienkripsi, tidak disimpan sembarangan" },
   { label: "Proses Cepat", desc: "Dikerjakan tim berpengalaman, sesuai estimasi" },
@@ -34,6 +30,11 @@ const trustPoints = [
 
 export default async function LandingPage() {
   const session = await auth();
+  const pricingTiers = await prisma.pricingTier.findMany({
+    where: { isActive: true },
+    orderBy: { price: "asc" },
+    take: 5,
+  });
 
   return (
     <main className="min-h-screen">
@@ -99,7 +100,7 @@ export default async function LandingPage() {
           </p>
           <div className="mt-8 flex gap-3">
             <Link
-              href="/register"
+              href="/order"
               className="px-6 py-3 rounded-md font-semibold text-sm transition"
               style={{ backgroundColor: "var(--color-gold)", color: "#0b1220" }}
             >
@@ -190,25 +191,32 @@ export default async function LandingPage() {
               </tr>
             </thead>
             <tbody>
-              {pricingPreview.map((p, i) => (
+              {pricingTiers.map((t) => (
                 <tr
-                  key={i}
+                  key={t.id}
                   className="border-t"
                   style={{ borderColor: "var(--color-border)" }}
                 >
-                  <td className="px-5 py-3">{p.from}</td>
-                  <td className="px-5 py-3">{p.to}</td>
+                  <td className="px-5 py-3">{RANK_LABELS[t.fromRank]}</td>
+                  <td className="px-5 py-3">{RANK_LABELS[t.toRank]}</td>
                   <td className="px-5 py-3" style={{ color: "var(--color-text-muted)" }}>
-                    {p.days}
+                    ~{t.estimatedDays} hari
                   </td>
                   <td
                     className="px-5 py-3 text-right font-mono-order"
                     style={{ color: "var(--color-gold)" }}
                   >
-                    {p.price}
+                    Rp{t.price.toLocaleString("id-ID")}
                   </td>
                 </tr>
               ))}
+              {pricingTiers.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-8 text-center" style={{ color: "var(--color-text-muted)" }}>
+                    Belum ada data harga — tambahkan lewat dashboard admin.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

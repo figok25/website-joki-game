@@ -10,7 +10,14 @@ export function NavAuthActions({
 }) {
   if (userName) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/pesanan"
+          className="text-sm"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          Pesanan Saya
+        </Link>
         <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>
           Halo, {userName}
         </span>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +30,14 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    const session = await getSession();
+    const role = (session?.user as { role?: string } | undefined)?.role;
+
+    if (role === "ADMIN") {
+      router.push("/dashboard");
+    } else {
+      router.push("/");
+    }
     router.refresh();
   }
 
