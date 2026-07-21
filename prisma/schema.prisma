@@ -1,0 +1,204 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================
+// AUTH (NextAuth.js)
+// ==========================
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String? // hashed with bcrypt, for credentials login
+  image         String?
+  role          Role      @default(USER)
+
+  accounts Account[]
+  sessions Session[]
+  orders   Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==========================
+// GAME (untuk saat ini hanya Mobile Legends, dibuat sebagai tabel
+// supaya gampang nambah game lain nanti)
+// ==========================
+
+model Game {
+  id     String @id @default(cuid())
+  name   String @unique // "Mobile Legends"
+  slug   String @unique // "mobile-legends"
+  isActive Boolean @default(true)
+
+  pricingTiers PricingTier[]
+  orders       Order[]
+
+  createdAt DateTime @default(now())
+}
+
+// Rank yang tersedia, dipakai sebagai referensi rank awal & tujuan
+enum Rank {
+  WARRIOR
+  ELITE
+  MASTER
+  GRANDMASTER
+  EPIC
+  LEGEND
+  MYTHIC
+  MYTHIC_HONOR
+  MYTHIC_GLORY
+  MYTHICAL_IMMORTAL
+}
+
+// Tabel harga: kombinasi rank awal -> rank tujuan = 1 harga
+model PricingTier {
+  id           String   @id @default(cuid())
+  gameId       String
+  game         Game     @relation(fields: [gameId], references: [id])
+  fromRank     Rank
+  toRank       Rank
+  price        Int // dalam Rupiah
+  estimatedDays Int // estimasi pengerjaan (hari)
+  isActive     Boolean  @default(true)
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameId, fromRank, toRank])
+  @@map("pricing_tiers")
+}
+
+// ==========================
+// ORDER
+// ==========================
+
+enum OrderStatus {
+  PENDING_PAYMENT   // menunggu pembayaran
+  PAID              // sudah dibayar, menunggu dikerjakan
+  IN_PROGRESS       // sedang dijoki
+  COMPLETED         // selesai
+  CANCELLED         // dibatalkan
+  FAILED            // pembayaran gagal/expired
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique // human-readable, misal JOKI-20260721-0001
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+
+  gameId        String
+  game          Game        @relation(fields: [gameId], references: [id])
+
+  pricingTierId String
+  pricingTier   PricingTier @relation(fields: [pricingTierId], references: [id])
+
+  // Kredensial akun game — WAJIB disimpan terenkripsi (AES), bukan plain text.
+  // Ditangani di layer aplikasi (lib/encryption.ts), bukan di schema ini.
+  gameAccountUsername    String
+  gameAccountPasswordEnc String // ciphertext
+  gameAccountServerId    String? // ID server ML jika perlu
+  notes                  String? @db.Text // catatan tambahan dari customer
+
+  status        OrderStatus @default(PENDING_PAYMENT)
+  price         Int // snapshot harga saat order dibuat
+
+  payment       Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("orders")
+}
+
+// ==========================
+// PAYMENT (Midtrans)
+// ==========================
+
+enum PaymentStatus {
+  PENDING
+  SETTLEMENT
+  EXPIRE
+  CANCEL
+  DENY
+  REFUND
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id])
+
+  midtransOrderId String        @unique // dikirim ke Midtrans sebagai order_id
+  transactionId   String?       // transaction_id dari Midtrans
+  paymentType     String?       // e.g. "qris", "bank_transfer", "gopay"
+  status          PaymentStatus @default(PENDING)
+  grossAmount     Int
+
+  rawResponse     Json? // simpan payload notifikasi Midtrans untuk audit
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
