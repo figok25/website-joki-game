@@ -1,8 +1,10 @@
-export { auth as middleware } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
 
-// Halaman apa saja yang wajib login. Pengecekan role (admin/user)
-// dilakukan di masing-masing page/layout, bukan di sini, supaya
-// middleware tetap ringan (jalan di Edge runtime, tidak akses Prisma).
+// Pakai authConfig ringan (tanpa Prisma) khusus untuk middleware,
+// supaya ukuran Edge Function tetap di bawah limit Vercel.
+export const { auth: middleware } = NextAuth(authConfig);
+
 export const config = {
   matcher: ["/dashboard/:path*", "/order/:path*", "/pesanan/:path*"],
 };
