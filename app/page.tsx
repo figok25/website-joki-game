@@ -35,6 +35,10 @@ export default async function LandingPage() {
     orderBy: { price: "asc" },
     take: 5,
   });
+  const starRates = await prisma.starRate.findMany({
+    where: { isActive: true },
+    orderBy: { pricePerStar: "asc" },
+  });
 
   return (
     <main className="min-h-screen">
@@ -219,6 +223,29 @@ export default async function LandingPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Custom star pricing */}
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <h2 className="font-display text-2xl font-bold mb-2">Harga Custom per Bintang</h2>
+        <p className="text-sm mb-8" style={{ color: "var(--color-text-muted)" }}>
+          Mau tentukan sendiri jumlah bintangnya? Tinggal pilih rank, tentukan jumlah bintang saat order.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {starRates.map((s) => (
+            <div
+              key={s.id}
+              className="rounded-xl border p-4 text-center"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+            >
+              <p className="text-sm font-semibold">{RANK_LABELS[s.rank]}</p>
+              <p className="font-mono-order text-sm mt-1" style={{ color: "var(--color-gold)" }}>
+                Rp{s.pricePerStar.toLocaleString("id-ID")}
+              </p>
+              <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>per bintang</p>
+            </div>
+          ))}
         </div>
       </section>
 

@@ -88,6 +88,7 @@ model Game {
   isActive Boolean @default(true)
 
   pricingTiers PricingTier[]
+  starRates    StarRate[]
   orders       Order[]
 
   createdAt DateTime @default(now())
@@ -127,9 +128,33 @@ model PricingTier {
   @@map("pricing_tiers")
 }
 
+// Harga custom per bintang — hanya berlaku untuk rank Epic ke atas
+// (rank di bawah itu biasanya dihitung per divisi, bukan per bintang).
+model StarRate {
+  id           String  @id @default(cuid())
+  gameId       String
+  game         Game    @relation(fields: [gameId], references: [id])
+  rank         Rank // EPIC, LEGEND, MYTHIC, MYTHIC_HONOR, MYTHIC_GLORY, MYTHICAL_IMMORTAL
+  pricePerStar Int // dalam Rupiah, per 1 bintang
+  isActive     Boolean @default(true)
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameId, rank])
+  @@map("star_rates")
+}
+
 // ==========================
 // ORDER
 // ==========================
+
+enum OrderType {
+  PACKAGE     // pakai PricingTier (rank awal -> rank tujuan tetap)
+  CUSTOM_STAR // custom, dihitung per bintang
+}
 
 enum OrderStatus {
   PENDING_PAYMENT   // menunggu pembayaran
@@ -150,8 +175,17 @@ model Order {
   gameId        String
   game          Game        @relation(fields: [gameId], references: [id])
 
-  pricingTierId String
-  pricingTier   PricingTier @relation(fields: [pricingTierId], references: [id])
+  orderType     OrderType   @default(PACKAGE)
+
+  // Diisi kalau orderType = PACKAGE
+  pricingTierId String?
+  pricingTier   PricingTier? @relation(fields: [pricingTierId], references: [id])
+
+  // Diisi kalau orderType = CUSTOM_STAR
+  starRateId         String?
+  starRate           StarRate? @relation(fields: [starRateId], references: [id])
+  customStars        Int? // jumlah bintang yang diminta
+  customPricePerStar Int? // snapshot harga per bintang saat order dibuat
 
   // Kredensial akun game — WAJIB disimpan terenkripsi (AES), bukan plain text.
   // Ditangani di layer aplikasi (lib/encryption.ts), bukan di schema ini.

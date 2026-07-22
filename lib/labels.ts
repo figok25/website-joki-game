@@ -20,6 +20,21 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   FAILED: "Gagal",
 };
 
+export const ORDER_TYPE_LABELS: Record<string, string> = {
+  PACKAGE: "Paket Rank",
+  CUSTOM_STAR: "Custom per Bintang",
+};
+
+// Rank yang punya sistem bintang (Epic ke atas)
+export const STAR_ELIGIBLE_RANKS = [
+  "EPIC",
+  "LEGEND",
+  "MYTHIC",
+  "MYTHIC_HONOR",
+  "MYTHIC_GLORY",
+  "MYTHICAL_IMMORTAL",
+];
+
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   PENDING: "Menunggu",
   SETTLEMENT: "Lunas",

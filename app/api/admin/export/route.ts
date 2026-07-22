@@ -12,6 +12,7 @@ export async function GET() {
     include: {
       user: true,
       pricingTier: { include: { game: true } },
+      starRate: { include: { game: true } },
       payment: true,
     },
     orderBy: { createdAt: "desc" },
@@ -26,8 +27,10 @@ export async function GET() {
     { header: "Customer", key: "customer", width: 24 },
     { header: "Email", key: "email", width: 28 },
     { header: "Game", key: "game", width: 16 },
+    { header: "Tipe Order", key: "orderType", width: 16 },
     { header: "Rank Awal", key: "fromRank", width: 16 },
     { header: "Rank Tujuan", key: "toRank", width: 16 },
+    { header: "Jumlah Bintang", key: "stars", width: 14 },
     { header: "Status Pesanan", key: "status", width: 16 },
     { header: "Status Bayar", key: "paymentStatus", width: 16 },
     { header: "Metode Bayar", key: "paymentType", width: 16 },
@@ -37,14 +40,17 @@ export async function GET() {
   sheet.getRow(1).font = { bold: true };
 
   for (const o of orders) {
+    const isCustom = o.orderType === "CUSTOM_STAR";
     sheet.addRow({
       orderNumber: o.orderNumber,
       date: o.createdAt.toLocaleDateString("id-ID"),
       customer: o.user.name,
       email: o.user.email,
-      game: o.pricingTier.game.name,
-      fromRank: o.pricingTier.fromRank,
-      toRank: o.pricingTier.toRank,
+      game: (o.pricingTier?.game ?? o.starRate?.game)?.name ?? "-",
+      orderType: isCustom ? "Custom per Bintang" : "Paket Rank",
+      fromRank: isCustom ? "-" : o.pricingTier?.fromRank ?? "-",
+      toRank: isCustom ? (o.starRate?.rank ?? "-") : o.pricingTier?.toRank ?? "-",
+      stars: isCustom ? o.customStars ?? "-" : "-",
       status: o.status,
       paymentStatus: o.payment?.status ?? "-",
       paymentType: o.payment?.paymentType ?? "-",

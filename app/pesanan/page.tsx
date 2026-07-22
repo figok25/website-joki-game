@@ -11,7 +11,7 @@ export default async function MyOrdersPage() {
 
   const orders = await prisma.order.findMany({
     where: { userId },
-    include: { pricingTier: true, payment: true },
+    include: { pricingTier: true, starRate: true, payment: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -42,8 +42,11 @@ export default async function MyOrdersPage() {
                     {o.orderNumber}
                   </p>
                   <p className="font-display font-semibold mt-1">
-                    {RANK_LABELS[o.pricingTier.fromRank]} →{" "}
-                    {RANK_LABELS[o.pricingTier.toRank]}
+                    {o.orderType === "CUSTOM_STAR" && o.starRate
+                      ? `${RANK_LABELS[o.starRate.rank]} (custom, ${o.customStars ?? 0} bintang)`
+                      : o.pricingTier
+                        ? `${RANK_LABELS[o.pricingTier.fromRank]} → ${RANK_LABELS[o.pricingTier.toRank]}`
+                        : "-"}
                   </p>
                 </div>
                 <p className="font-mono-order font-semibold" style={{ color: "var(--color-gold)" }}>

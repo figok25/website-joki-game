@@ -63,6 +63,33 @@ async function main() {
     });
   }
 
+  // ===== Harga custom per bintang =====
+  const starRates: { rank: Rank; pricePerStar: number }[] = [
+    { rank: Rank.EPIC, pricePerStar: 6000 },
+    { rank: Rank.LEGEND, pricePerStar: 8000 },
+    { rank: Rank.MYTHIC, pricePerStar: 13000 },
+    { rank: Rank.MYTHIC_HONOR, pricePerStar: 17000 },
+    { rank: Rank.MYTHIC_GLORY, pricePerStar: 22000 },
+    { rank: Rank.MYTHICAL_IMMORTAL, pricePerStar: 30000 },
+  ];
+
+  for (const s of starRates) {
+    await prisma.starRate.upsert({
+      where: {
+        gameId_rank: {
+          gameId: game.id,
+          rank: s.rank,
+        },
+      },
+      update: { pricePerStar: s.pricePerStar },
+      create: {
+        gameId: game.id,
+        rank: s.rank,
+        pricePerStar: s.pricePerStar,
+      },
+    });
+  }
+
   console.log("Seed selesai.");
   console.log(`Login admin -> email: ${adminEmail} | password: ${adminPassword}`);
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RANK_LABELS } from "@/lib/labels";
+import { RANK_LABELS, STAR_ELIGIBLE_RANKS } from "@/lib/labels";
 
 type Tier = {
   id: string;
@@ -10,6 +10,12 @@ type Tier = {
   toRank: string;
   price: number;
   estimatedDays: number;
+};
+
+type StarRate = {
+  id: string;
+  rank: string;
+  pricePerStar: number;
 };
 
 declare global {
@@ -28,13 +34,20 @@ const inputStyle = {
 
 export function OrderForm({
   pricingTiers,
+  starRates,
   clientKey,
 }: {
   pricingTiers: Tier[];
+  starRates: StarRate[];
   clientKey: string;
 }) {
   const router = useRouter();
+  const [orderType, setOrderType] = useState<"PACKAGE" | "CUSTOM_STAR">("PACKAGE");
+
   const [tierId, setTierId] = useState(pricingTiers[0]?.id ?? "");
+  const [starRateId, setStarRateId] = useState(starRates[0]?.id ?? "");
+  const [stars, setStars] = useState("");
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -55,23 +68,49 @@ export function OrderForm({
   }, [clientKey]);
 
   const selectedTier = pricingTiers.find((t) => t.id === tierId);
+  const selectedStarRate = starRates.find((s) => s.id === starRateId);
+  const starsNum = Number(stars) || 0;
+  const customTotal = selectedStarRate ? selectedStarRate.pricePerStar * starsNum : 0;
+
+  const totalPrice = orderType === "PACKAGE" ? selectedTier?.price ?? 0 : customTotal;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (orderType === "CUSTOM_STAR" && starsNum <= 0) {
+      setError("Jumlah bintang harus lebih dari 0");
+      return;
+    }
+
     setLoading(true);
+
+    const body =
+      orderType === "PACKAGE"
+        ? {
+            orderType,
+            pricingTierId: tierId,
+            gameAccountUsername: username,
+            gameAccountPassword: password,
+            gameAccountServerId: serverId || undefined,
+            customerWhatsapp: whatsapp,
+            notes: notes || undefined,
+          }
+        : {
+            orderType,
+            starRateId,
+            customStars: starsNum,
+            gameAccountUsername: username,
+            gameAccountPassword: password,
+            gameAccountServerId: serverId || undefined,
+            customerWhatsapp: whatsapp,
+            notes: notes || undefined,
+          };
 
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pricingTierId: tierId,
-        gameAccountUsername: username,
-        gameAccountPassword: password,
-        gameAccountServerId: serverId || undefined,
-        customerWhatsapp: whatsapp,
-        notes: notes || undefined,
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
@@ -111,25 +150,87 @@ export function OrderForm({
         </p>
       )}
 
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Paket Rank</label>
-        <select
-          value={tierId}
-          onChange={(e) => setTierId(e.target.value)}
-          className="w-full rounded-md px-3 py-2 text-sm outline-none border"
-          style={inputStyle}
+      {/* Toggle tipe order */}
+      <div className="flex rounded-md border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+        <button
+          type="button"
+          onClick={() => setOrderType("PACKAGE")}
+          className="flex-1 text-sm py-2 font-semibold transition"
+          style={{
+            backgroundColor: orderType === "PACKAGE" ? "var(--color-gold)" : "transparent",
+            color: orderType === "PACKAGE" ? "#0b1220" : "var(--color-text-muted)",
+          }}
         >
-          {pricingTiers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {RANK_LABELS[t.fromRank]} → {RANK_LABELS[t.toRank]} (Rp
-              {t.price.toLocaleString("id-ID")}, ~{t.estimatedDays} hari)
-            </option>
-          ))}
-        </select>
+          Paket Rank
+        </button>
+        <button
+          type="button"
+          onClick={() => setOrderType("CUSTOM_STAR")}
+          className="flex-1 text-sm py-2 font-semibold transition"
+          style={{
+            backgroundColor: orderType === "CUSTOM_STAR" ? "var(--color-gold)" : "transparent",
+            color: orderType === "CUSTOM_STAR" ? "#0b1220" : "var(--color-text-muted)",
+          }}
+        >
+          Custom per Bintang
+        </button>
       </div>
 
+      {orderType === "PACKAGE" ? (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Paket Rank</label>
+          <select
+            value={tierId}
+            onChange={(e) => setTierId(e.target.value)}
+            className="w-full rounded-md px-3 py-2 text-sm outline-none border"
+            style={inputStyle}
+          >
+            {pricingTiers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {RANK_LABELS[t.fromRank]} → {RANK_LABELS[t.toRank]} (Rp
+                {t.price.toLocaleString("id-ID")}, ~{t.estimatedDays} hari)
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Rank</label>
+            <select
+              value={starRateId}
+              onChange={(e) => setStarRateId(e.target.value)}
+              className="w-full rounded-md px-3 py-2 text-sm outline-none border"
+              style={inputStyle}
+            >
+              {starRates.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {RANK_LABELS[s.rank]} (Rp{s.pricePerStar.toLocaleString("id-ID")}/bintang)
+                </option>
+              ))}
+            </select>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              Hanya tersedia untuk rank {STAR_ELIGIBLE_RANKS.map((r) => RANK_LABELS[r]).join(", ")}.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Jumlah Bintang</label>
+            <input
+              required
+              type="number"
+              min={1}
+              value={stars}
+              onChange={(e) => setStars(e.target.value)}
+              placeholder="Contoh: 10"
+              className="w-full rounded-md px-3 py-2 text-sm outline-none border"
+              style={inputStyle}
+            />
+          </div>
+        </>
+      )}
+
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Username Akun Moontoon</label>
+        <label className="text-sm font-medium">Username Akun ML</label>
         <input
           required
           value={username}
@@ -140,7 +241,7 @@ export function OrderForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Password Akun Moonton</label>
+        <label className="text-sm font-medium">Password Akun ML</label>
         <input
           required
           type="password"
@@ -191,18 +292,18 @@ export function OrderForm({
         />
       </div>
 
-      {selectedTier && (
+      {totalPrice > 0 && (
         <p className="text-sm">
           Total bayar:{" "}
           <span className="font-mono-order font-semibold" style={{ color: "var(--color-gold)" }}>
-            Rp{selectedTier.price.toLocaleString("id-ID")}
+            Rp{totalPrice.toLocaleString("id-ID")}
           </span>
         </p>
       )}
 
       <button
         type="submit"
-        disabled={loading || !selectedTier}
+        disabled={loading || totalPrice <= 0}
         className="w-full rounded-md py-2.5 text-sm font-semibold transition disabled:opacity-60"
         style={{ backgroundColor: "var(--color-gold)", color: "#0b1220" }}
       >

@@ -3,7 +3,7 @@ import { OrdersTable } from "./orders-table";
 
 export default async function DashboardOrdersPage() {
   const orders = await prisma.order.findMany({
-    include: { pricingTier: true, payment: true },
+    include: { pricingTier: true, starRate: true, payment: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -31,8 +31,11 @@ export default async function DashboardOrdersPage() {
         orders={orders.map((o) => ({
           id: o.id,
           orderNumber: o.orderNumber,
-          fromRank: o.pricingTier.fromRank,
-          toRank: o.pricingTier.toRank,
+          orderType: o.orderType,
+          fromRank: o.pricingTier?.fromRank ?? null,
+          toRank: o.pricingTier?.toRank ?? null,
+          customRank: o.starRate?.rank ?? null,
+          customStars: o.customStars,
           status: o.status,
           paymentStatus: o.payment?.status ?? null,
           price: o.price,

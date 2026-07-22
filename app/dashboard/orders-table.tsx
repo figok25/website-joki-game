@@ -7,8 +7,11 @@ import { RANK_LABELS, ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/lib/l
 type OrderRow = {
   id: string;
   orderNumber: string;
-  fromRank: string;
-  toRank: string;
+  orderType: string;
+  fromRank: string | null;
+  toRank: string | null;
+  customRank: string | null;
+  customStars: number | null;
   status: string;
   paymentStatus: string | null;
   price: number;
@@ -29,6 +32,16 @@ const selectStyle = {
   borderColor: "var(--color-border)",
   color: "var(--color-text)",
 };
+
+function renderRankInfo(o: OrderRow): string {
+  if (o.orderType === "CUSTOM_STAR" && o.customRank) {
+    return `${RANK_LABELS[o.customRank]} (custom, ${o.customStars ?? 0} bintang)`;
+  }
+  if (o.fromRank && o.toRank) {
+    return `${RANK_LABELS[o.fromRank]} → ${RANK_LABELS[o.toRank]}`;
+  }
+  return "-";
+}
 
 export function OrdersTable({ orders }: { orders: OrderRow[] }) {
   const router = useRouter();
@@ -122,7 +135,7 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
               <tr key={o.id} className="border-t" style={{ borderColor: "var(--color-border)" }}>
                 <td className="px-3 py-3 font-mono-order text-xs truncate">{o.orderNumber}</td>
                 <td className="px-3 py-3 text-xs">
-                  {RANK_LABELS[o.fromRank]} → {RANK_LABELS[o.toRank]}
+                  {renderRankInfo(o)}
                 </td>
                 <td className="px-3 py-3">
                   <select
@@ -213,7 +226,7 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 Rp{o.price.toLocaleString("id-ID")}
               </p>
             </div>
-            <p className="text-sm">{RANK_LABELS[o.fromRank]} → {RANK_LABELS[o.toRank]}</p>
+            <p className="text-sm">{renderRankInfo(o)}</p>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={o.status}

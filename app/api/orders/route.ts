@@ -6,7 +6,10 @@ import { encrypt } from "@/lib/encryption";
 import { snap } from "@/lib/midtrans";
 
 const orderSchema = z.object({
-  pricingTierId: z.string(),
+  orderType: z.enum(["PACKAGE", "CUSTOM_STAR"]),
+  pricingTierId: z.string().optional(),
+  starRateId: z.string().optional(),
+  customStars: z.number().int().positive().optional(),
   gameAccountUsername: z.string().min(1, "Username wajib diisi"),
   gameAccountPassword: z.string().min(1, "Password wajib diisi"),
   gameAccountServerId: z.string().optional(),
@@ -30,7 +33,10 @@ export async function POST(req: Request) {
   }
 
   const {
+    orderType,
     pricingTierId,
+    starRateId,
+    customStars,
     gameAccountUsername,
     gameAccountPassword,
     gameAccountServerId,
@@ -38,32 +44,66 @@ export async function POST(req: Request) {
     notes,
   } = parsed.data;
 
-  const tier = await prisma.pricingTier.findUnique({
-    where: { id: pricingTierId },
-    include: { game: true },
-  });
-  if (!tier || !tier.isActive) {
-    return NextResponse.json(
-      { error: "Paket harga tidak ditemukan" },
-      { status: 404 }
-    );
-  }
-
   const userId = (session.user as { id: string }).id;
   const orderNumber = `JOKI-${Date.now()}`;
+
+  let gameId: string;
+  let price: number;
+  let itemName: string;
+  let orderData: Record<string, unknown>;
+
+  if (orderType === "PACKAGE") {
+    if (!pricingTierId) {
+      return NextResponse.json({ error: "Paket rank wajib dipilih" }, { status: 400 });
+    }
+    const tier = await prisma.pricingTier.findUnique({
+      where: { id: pricingTierId },
+      include: { game: true },
+    });
+    if (!tier || !tier.isActive) {
+      return NextResponse.json({ error: "Paket harga tidak ditemukan" }, { status: 404 });
+    }
+    gameId = tier.gameId;
+    price = tier.price;
+    itemName = `Joki ${tier.game.name} ${tier.fromRank} -> ${tier.toRank}`;
+    orderData = { orderType: "PACKAGE", pricingTierId: tier.id };
+  } else {
+    if (!starRateId || !customStars) {
+      return NextResponse.json(
+        { error: "Rank & jumlah bintang wajib diisi" },
+        { status: 400 }
+      );
+    }
+    const starRate = await prisma.starRate.findUnique({
+      where: { id: starRateId },
+      include: { game: true },
+    });
+    if (!starRate || !starRate.isActive) {
+      return NextResponse.json({ error: "Harga custom tidak ditemukan" }, { status: 404 });
+    }
+    gameId = starRate.gameId;
+    price = starRate.pricePerStar * customStars;
+    itemName = `Joki ${starRate.game.name} ${starRate.rank} custom (${customStars} bintang)`;
+    orderData = {
+      orderType: "CUSTOM_STAR",
+      starRateId: starRate.id,
+      customStars,
+      customPricePerStar: starRate.pricePerStar,
+    };
+  }
 
   const order = await prisma.order.create({
     data: {
       orderNumber,
       userId,
-      gameId: tier.gameId,
-      pricingTierId: tier.id,
+      gameId,
+      ...orderData,
       gameAccountUsername,
       gameAccountPasswordEnc: encrypt(gameAccountPassword),
       gameAccountServerId,
       customerWhatsapp,
       notes,
-      price: tier.price,
+      price,
     },
   });
 
@@ -73,7 +113,7 @@ export async function POST(req: Request) {
     const transaction = await snap.createTransaction({
       transaction_details: {
         order_id: midtransOrderId,
-        gross_amount: tier.price,
+        gross_amount: price,
       },
       customer_details: {
         first_name: session.user.name ?? "Customer",
@@ -81,10 +121,10 @@ export async function POST(req: Request) {
       },
       item_details: [
         {
-          id: tier.id,
-          price: tier.price,
+          id: order.id,
+          price,
           quantity: 1,
-          name: `Joki ${tier.game.name} ${tier.fromRank} -> ${tier.toRank}`,
+          name: itemName,
         },
       ],
     });
@@ -93,7 +133,7 @@ export async function POST(req: Request) {
       data: {
         orderId: order.id,
         midtransOrderId,
-        grossAmount: tier.price,
+        grossAmount: price,
         status: "PENDING",
       },
     });
@@ -105,7 +145,6 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("Midtrans error:", err);
-    // Order tetap dibuat, tapi tandai gagal supaya tidak jadi entri "hantu"
     await prisma.order.update({
       where: { id: order.id },
       data: { status: "FAILED" },

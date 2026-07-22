@@ -53,7 +53,7 @@ export default async function OrderDetailsPage() {
                 <p className="mt-0.5">{o.user.name}</p>
               </div>
               <div>
-                <p style={{ color: "var(--color-text-muted)" }}>Username Akun Moonton</p>
+                <p style={{ color: "var(--color-text-muted)" }}>Username Akun ML</p>
                 <p className="mt-0.5">{o.gameAccountUsername}</p>
               </div>
               <div>

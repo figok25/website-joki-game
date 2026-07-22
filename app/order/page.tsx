@@ -9,10 +9,16 @@ export default async function OrderPage() {
     redirect("/login");
   }
 
-  const pricingTiers = await prisma.pricingTier.findMany({
-    where: { isActive: true },
-    orderBy: { price: "asc" },
-  });
+  const [pricingTiers, starRates] = await Promise.all([
+    prisma.pricingTier.findMany({
+      where: { isActive: true },
+      orderBy: { price: "asc" },
+    }),
+    prisma.starRate.findMany({
+      where: { isActive: true },
+      orderBy: { pricePerStar: "asc" },
+    }),
+  ]);
 
   return (
     <main className="min-h-screen px-4 py-16">
@@ -27,7 +33,7 @@ export default async function OrderPage() {
           Mobile Legends Rank Boost
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--color-text-muted)" }}>
-          Pilih paket rank, isi data akun, lalu bayar via Midtrans (mode sandbox).
+          Pilih paket rank tetap, atau custom per bintang — isi data akun, lalu bayar via Midtrans (mode sandbox).
         </p>
         <OrderForm
           pricingTiers={pricingTiers.map((t) => ({
@@ -36,6 +42,11 @@ export default async function OrderPage() {
             toRank: t.toRank,
             price: t.price,
             estimatedDays: t.estimatedDays,
+          }))}
+          starRates={starRates.map((s) => ({
+            id: s.id,
+            rank: s.rank,
+            pricePerStar: s.pricePerStar,
           }))}
           clientKey={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? ""}
         />
