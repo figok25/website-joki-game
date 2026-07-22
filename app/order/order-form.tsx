@@ -37,6 +37,7 @@ export function OrderForm({
   const [tierId, setTierId] = useState(pricingTiers[0]?.id ?? "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [serverId, setServerId] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,6 +69,7 @@ export function OrderForm({
         gameAccountUsername: username,
         gameAccountPassword: password,
         gameAccountServerId: serverId || undefined,
+        customerWhatsapp: whatsapp,
         notes: notes || undefined,
       }),
     });
@@ -127,7 +129,7 @@ export function OrderForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Username Akun ML</label>
+        <label className="text-sm font-medium">Username Akun Moontoon</label>
         <input
           required
           value={username}
@@ -138,7 +140,7 @@ export function OrderForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Password Akun ML</label>
+        <label className="text-sm font-medium">Password Akun Moonton</label>
         <input
           required
           type="password"
@@ -149,6 +151,22 @@ export function OrderForm({
         />
         <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
           Password disimpan terenkripsi, hanya bisa dibaca sistem saat proses joki berjalan.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">No WhatsApp Aktif</label>
+        <input
+          required
+          type="tel"
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          placeholder="08xxxxxxxxxx"
+          className="w-full rounded-md px-3 py-2 text-sm outline-none border"
+          style={inputStyle}
+        />
+        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+          Dipakai admin untuk menghubungi kamu soal proses login/verifikasi akun.
         </p>
       </div>
 

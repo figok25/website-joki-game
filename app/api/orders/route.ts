@@ -10,6 +10,7 @@ const orderSchema = z.object({
   gameAccountUsername: z.string().min(1, "Username wajib diisi"),
   gameAccountPassword: z.string().min(1, "Password wajib diisi"),
   gameAccountServerId: z.string().optional(),
+  customerWhatsapp: z.string().min(8, "Nomor WhatsApp wajib diisi"),
   notes: z.string().optional(),
 });
 
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     gameAccountUsername,
     gameAccountPassword,
     gameAccountServerId,
+    customerWhatsapp,
     notes,
   } = parsed.data;
 
@@ -59,6 +61,7 @@ export async function POST(req: Request) {
       gameAccountUsername,
       gameAccountPasswordEnc: encrypt(gameAccountPassword),
       gameAccountServerId,
+      customerWhatsapp,
       notes,
       price: tier.price,
     },

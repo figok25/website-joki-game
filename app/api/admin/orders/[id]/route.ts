@@ -52,3 +52,25 @@ export async function PATCH(
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) {
+    return NextResponse.json({ error: "Pesanan tidak ditemukan" }, { status: 404 });
+  }
+
+  // Payment terkait ikut terhapus otomatis (onDelete: Cascade di schema)
+  await prisma.order.delete({ where: { id } });
+
+  return NextResponse.json({ success: true });
+}

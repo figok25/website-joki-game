@@ -158,6 +158,7 @@ model Order {
   gameAccountUsername    String
   gameAccountPasswordEnc String // ciphertext
   gameAccountServerId    String? // ID server ML jika perlu
+  customerWhatsapp       String? // untuk admin hubungi customer soal login/OTP
   notes                  String? @db.Text // catatan tambahan dari customer
 
   status        OrderStatus @default(PENDING_PAYMENT)
@@ -187,7 +188,7 @@ enum PaymentStatus {
 model Payment {
   id              String        @id @default(cuid())
   orderId         String        @unique
-  order           Order         @relation(fields: [orderId], references: [id])
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   midtransOrderId String        @unique // dikirim ke Midtrans sebagai order_id
   transactionId   String?       // transaction_id dari Midtrans
